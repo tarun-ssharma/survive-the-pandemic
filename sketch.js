@@ -6,10 +6,12 @@ function blob(r, x, y, inf, player) {
   this.draw = function() {
     if (this.inf) {
       fill(200, 0, 0);
+    } else if(this.player){
+      fill(0,200,0);
     } else {
       fill(0, 0, 200);
     }
-    ellipse(this.pos.x, this.pos.y, 2 * r, 2 * r);
+    ellipse(this.pos.x, this.pos.y, 2 * this.r, 2 * this.r);
   }
   this.update = function(x, y) {
     var xpos, ypos;
@@ -48,14 +50,27 @@ var blobs = [];
 var blobs_length = 60;
 var groceries = [];
 var initial_infected = 25;
-var diff_radio;
+var diff_radio,instruction_div,diff;
 var selected = false;
 
 function resetBlobs() {
   blobs[0] = new blob(10, width / 2, height / 2, false, true); //your blob
-  for (var i = 1; i < initial_infected; i++) {
+  for (var i = 1; i <= Math.floor(initial_infected/4); i++) {
     //blobs[i] = new blob(10, random(0, width), random(0, height), random() < 0.5);
-    blobs[i] = new blob(10, random(0, width), random(0, height), true);
+    blobs[i] = new blob(10, random(0, width/2-10), random(0, height/2-10), true);
+  }
+
+  for (i = Math.ceil(initial_infected/4); i <= Math.floor(2*initial_infected/4); i++) {
+    //blobs[i] = new blob(10, random(0, width), random(0, height), random() < 0.5);
+    blobs[i] = new blob(10, random(width/2+10, width), random(0, height/2-10), true);
+  }
+  for (i = Math.ceil(2*initial_infected/4); i <= Math.floor(3*initial_infected/4); i++) {
+    //blobs[i] = new blob(10, random(0, width), random(0, height), random() < 0.5);
+    blobs[i] = new blob(10, random(0, width/2-10), random(height/2+10, height), true);
+  }
+  for (i = Math.ceil(3*initial_infected/4); i < initial_infected; i++) {
+    //blobs[i] = new blob(10, random(0, width), random(0, height), random() < 0.5);
+    blobs[i] = new blob(10, random(width/2+10, width), random(height/2+10, height), true);
   }
   for (i = initial_infected; i < blobs_length; i++) {
     blobs[i] = new blob(10, random(0, width), random(0, height), false);
@@ -70,29 +85,26 @@ function resetGroceries() {
 }
 
 function difficultyButton() {
-  var radio = createRadio("Choose difficulty:");
-  radio.option('low');
-  radio.option('medium');
-  radio.option('high');
+  var radio = createRadio();
+  radio.option('easy','low');
+  radio.option('not-so-easy','medium');
+  radio.option('hard','high');
   radio.value('low');
   textAlign(CENTER);
   return radio;
 }
 
 function setup() {
-  createCanvas(400, 400);
-  start_button = createButton('Play!');
-  size_ = start_button.size();
-  start_button.position(width / 2 - size_.width / 2, height / 2 - size_.height / 2);
-  start_button.mousePressed(startPlaying.bind(this, start_button));
-  diff_radio = difficultyButton();
-  diff_radio.position(width / 2 - 3 * size_.width / 2, height / 2 - 3 * size_.height / 2);
+  canvas_ = createCanvas(624, 557);
+  print(windowWidth, windowHeight);
+  //canvas_.parent('myContainer');
+  gameEnded('Choose Difficulty:','Play!');
   noLoop();
 }
 
 function draw() {
   background(220);
-  if(!selected) return;
+  if (!selected) return;
   blobs[0].update(mouseX, mouseY);
   blobs[0].draw();
   groceries[0].draw();
@@ -102,7 +114,10 @@ function draw() {
 
 
   for (var i = 1; i < blobs_length; i++) {
-    blobs[i].update((blobs[i].pos.x + random(-7, 7)) % width, (blobs[i].pos.y + random(-7, 7)) % height);
+    var speed = 7;
+    if(diff=='medium') speed=8.5;
+    if(diff=='high') speed=10;
+    blobs[i].update((blobs[i].pos.x + random(-speed, speed)) % width, (blobs[i].pos.y + random(-speed, speed)) % height);
     blobs[i].draw();
   }
   //compute distance between every blob
@@ -126,36 +141,54 @@ function draw() {
     groceries[1].visited == true &&
     groceries[2].visited == true &&
     groceries[3].visited == true) {
-    selected = false;
-    win_div = createDiv('You Win!');
-    win_div.position(width / 2, height / 2 - 20);
-    play_again_button = createButton('Play Again!');
-    play_again_button.position(width / 2, height / 2);
-    play_again_button.mousePressed(startPlaying.bind(this, play_again_button, win_div));
-    resetBlobs();
+    //So that draw() doesn't run after this.
+    gameEnded('Woah man! You did it! <br> Choose Difficulty:', 'Play Again!');
+
+    //Wait until play again is clicked.
     noLoop();
   }
   if (blobs[0].inf == true) {
-    selected = false;
-    play_again_button = createButton('Play Again!');
-    size_ = play_again_button.size();
-    play_again_button.position(width / 2 - size_.width / 2, height / 2 - size_.height / 2);
-    lose_div = createDiv('You Lose!');
-    lose_div.style("z-index: 200");
-    lose_div.style('background-color',color(0,100,0,100))
-    lose_div.style('color', color(0, 0, 0, 255))
-    lose_div.position(width / 2 - size_.width / 2, height / 2 - 3 * size_.height);
-    diff_radio = difficultyButton();
-    diff_radio.style('background-color',color(0,100,0,0))
-    diff_radio.position(width / 2 - size_.width, height / 2 - 3 * size_.height / 2);
+    gameEnded('Sorry dude, you couldn\'t make it :| <br> Choose Difficulty:', 'Play Again!');
 
-    play_again_button.style('background-color',color(0,100,0));
-    play_again_button.mousePressed(startPlaying.bind(this, play_again_button, lose_div));
-    resetBlobs();
     noLoop();
   }
 
   frameRate(10);
+}
+
+function gameEnded(notif, button_label) {
+  selected = false;
+  fill(255,255,255)
+  play_again_button = createButton(button_label);
+  size_ = play_again_button.size();
+  play_again_button.position(width / 2 - size_.width / 2, height / 2 - size_.height / 2);
+  play_again_button.style('background-color', color(255, 255, 255,255));
+  play_again_button.style('font-weight: bold;');
+
+  lose_div = createDiv(notif);
+  lose_div.style('background-color', color(255, 255, 255, 255))
+  lose_div.style('color', color(0, 0, 0, 255));
+  lose_div.style('text-align:center');
+  lose_div.style('min-width: 200px;');
+  lose_div.position(width/3, height / 3);
+
+  diff_radio = difficultyButton();
+  diff_radio.style('background-color', color(255, 255, 255, 255))
+  diff_radio.size(lose_div.size().width,height/32);
+  diff_radio.style('text-align:center');
+  diff_radio.position(width / 3, height/2.5);
+  
+  //Instructions scrollable
+  instruction_div = createDiv('Instructions:<br>1. Infected blobs(RED) can infect healthy blobs(BLUE/GREEN) by contact.<br>2.If you(GREEN) get infected, you lose!<br>3.Once your blob gets grocery from a store by coming in contact, the store turns gray from black.<br>4. To win, avoid infected blobs and collect groceries from all 4 corners.');
+  //instruction_div.id('gm_instr');
+  instruction_div.position(width/4, height/2+size_.height);
+  instruction_div.size(width/2, height/4);
+  instruction_div.style('text-align:center');
+  instruction_div.style('background-color', color(255, 255, 255, 255))
+  instruction_div.style('overflow-wrap: break-word;');
+  instruction_div.style('overflow: scroll');
+
+  play_again_button.mousePressed(startPlaying.bind(this, play_again_button, lose_div));
 }
 
 function startPlaying(start_button, lose_div) {
@@ -163,18 +196,20 @@ function startPlaying(start_button, lose_div) {
   start_button.hide();
   diff = diff_radio.value();
   if (diff == 'low') {
-    blobs_length = 30;
-    initial_infected = 5;
+    blobs_length = 40;
+    initial_infected = 10;
   }
   if (diff == 'medium') {
-    blobs_length = 60;
-    initial_infected = 25;
+    blobs_length = 70;
+    initial_infected = 30;
   }
   if (diff == 'high') {
-    blobs_length = 80;
-    initial_infected = 45;
+    blobs_length = 100;
+    initial_infected = 50;
   }
   diff_radio.hide();
+  //todo: remove later
+  if(instruction_div) instruction_div.hide();
   resetBlobs();
   resetGroceries();
   selected = true;
